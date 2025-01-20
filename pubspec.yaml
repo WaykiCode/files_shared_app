@@ -40,6 +40,9 @@ dependencies:
   path_provider: ^2.1.5
   open_file: ^3.5.10
   http: ^1.2.2
+  connectivity_plus: ^6.1.2
+  fluttertoast: ^8.2.10
+  flutter_launcher_icons: ^0.14.3
 
 dev_dependencies:
   flutter_test:
@@ -93,3 +96,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon.jpg"
+  adaptive_icon_background: "#FFFFFF"
