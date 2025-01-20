@@ -5,7 +5,7 @@ import 'package:flutter_pdfview/flutter_pdfview.dart';
 class PdfViewerScreen extends StatelessWidget {
   final String? localPath; // Ruta del archivo local (si es Offline)
 
-  const PdfViewerScreen({Key? key, this.localPath}) : super(key: key);
+  const PdfViewerScreen({super.key, this.localPath});
 
   @override
   Widget build(BuildContext context) {

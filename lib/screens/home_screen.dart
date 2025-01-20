@@ -12,7 +12,7 @@ import 'pdf_viewer_screen.dart';
 import 'package:path_provider/path_provider.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -23,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late Future<List<PdfFile>> futurePdfFiles;
   bool isConnected = true;
   bool isOnline = true;
+  bool isLoading = false;
   List<FileSystemEntity> localFiles = [];
 
   @override
@@ -81,13 +82,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       isOnline = false;
+      isLoading = true; // Mostrar indicador de carga
     });
 
-    await _deleteLocalFiles();
-    await _downloadAllFiles();
-    _loadLocalFiles();
-
-    showToast("Sincronización completada");
+    try {
+      await _deleteLocalFiles();
+      await _downloadAllFiles();
+      _loadLocalFiles();
+      showToast("Sincronización completada");
+    } catch (e) {
+      showToast("Error durante la sincronización: $e");
+    } finally {
+      setState(() {
+        isLoading = false; // Ocultar indicador de carga
+      });
+    }
   }
 
   Future<void> _deleteLocalFiles() async {
@@ -149,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CMAS VIAL'),
+        title: const Text('CMASS VIAL'),
         actions: [
           Row(
             children: [
@@ -167,77 +176,80 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: isOnline
-          ? RefreshIndicator(
-              onRefresh: _refreshPdfFiles,
-              child: FutureBuilder<List<PdfFile>>(
-                future: futurePdfFiles,
-                builder: (context, snapshot) {
-                  if (!isConnected) {
-                    return Center(child: Text('No hay conexión a Internet'));
-                  } else if (snapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(child: Text('No hay archivos PDF'));
-                  }
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : isOnline
+              ? RefreshIndicator(
+                  onRefresh: _refreshPdfFiles,
+                  child: FutureBuilder<List<PdfFile>>(
+                    future: futurePdfFiles,
+                    builder: (context, snapshot) {
+                      if (!isConnected) {
+                        return const Center(
+                            child: Text('No hay conexión a Internet'));
+                      } else if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(child: Text('No hay archivos PDF'));
+                      }
 
-                  return ListView.builder(
-                    itemCount: snapshot.data!.length,
-                    itemBuilder: (context, index) {
-                      final pdf = snapshot.data![index];
-                      return _buildStorageOption(
-                        context,
-                        icon: Icons.picture_as_pdf,
-                        color: Colors.red,
-                        title: pdf.filename,
-                        subtitle: 'Creado el: ${pdf.filecreate}',
-                        onTap: () async {
-                          final filePath = await _downloadFile(
-                            '$serverUrl/files${pdf.fileUrl}',
-                            pdf.filename,
-                          );
-
-                          Navigator.push(
+                      return ListView.builder(
+                        itemCount: snapshot.data!.length,
+                        itemBuilder: (context, index) {
+                          final pdf = snapshot.data![index];
+                          return _buildStorageOption(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => PdfViewerScreen(
-                                localPath: filePath,
-                              ),
-                            ),
+                            icon: Icons.picture_as_pdf,
+                            color: Colors.red,
+                            title: pdf.filename,
+                            subtitle: 'Creado el: ${pdf.filecreate}',
+                            onTap: () async {
+                              final filePath = await _downloadFile(
+                                '$serverUrl/files${pdf.fileUrl}',
+                                pdf.filename,
+                              );
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PdfViewerScreen(
+                                    localPath: filePath,
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                       );
                     },
-                  );
-                },
-              ),
-            )
-          : ListView.builder(
-              itemCount: localFiles.length,
-              itemBuilder: (context, index) {
-                final file = localFiles[index];
-                return _buildStorageOption(
-                  context,
-                  icon: Icons.picture_as_pdf,
-                  color: Colors.red,
-                  title: file.path.split('/').last,
-                  subtitle: 'Archivo local',
-                  onTap: () {
-                    Navigator.push(
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: localFiles.length,
+                  itemBuilder: (context, index) {
+                    final file = localFiles[index];
+                    return _buildStorageOption(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => PdfViewerScreen(
-                          localPath: file.path, // Pasamos la ruta local
-                        ),
-                      ),
+                      icon: Icons.picture_as_pdf,
+                      color: Colors.red,
+                      title: file.path.split('/').last,
+                      subtitle: 'Archivo local',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PdfViewerScreen(
+                              localPath: file.path, // Pasamos la ruta local
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
     );
   }
 
